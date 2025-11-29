@@ -48,12 +48,12 @@
 <body class="bg-gray-50">
     <div class="flex h-screen overflow-hidden">
         <!-- 侧边栏 -->
-        <aside class="w-64 bg-white shadow-lg flex-shrink-0">
+        <aside class="w-64 bg-white shadow-lg flex-shrink-0 flex flex-col">
             <div class="p-6 border-b border-gray-200">
                 <h1 class="text-2xl font-bold text-blue-600">MisaCard</h1>
                 <p class="text-sm text-gray-500 mt-1">卡片管理系统</p>
             </div>
-            <nav class="mt-6">
+            <nav class="mt-6 flex-1 overflow-y-auto">
                 <a href="#" onclick="showPage('dashboard')" id="nav-dashboard" class="sidebar-item active flex items-center px-6 py-3 text-gray-700">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -79,7 +79,7 @@
                     批量导入
                 </a>
             </nav>
-            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+            <div class="p-4 border-t border-gray-200 flex-shrink-0">
                 <div class="text-xs text-gray-500 mb-2">
                     <label class="flex items-center cursor-pointer">
                         <input type="checkbox" id="confirmDelete" checked class="mr-2">
@@ -549,6 +549,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                 <button onclick="viewCardDetail('${card.card_id}')" class="text-blue-600 hover:text-blue-900">详情</button>
+                                <button onclick="copyCardInfo('${card.card_id}')" class="text-indigo-600 hover:text-indigo-900" title="复制卡片信息">复制</button>
                                 <button onclick="activateCardFromList('${card.card_id}')" class="text-green-600 hover:text-green-900">激活</button>
                                 <button onclick="toggleRefund('${card.card_id}', ${card.refund_requested})" class="text-purple-600 hover:text-purple-900">
                                     ${card.refund_requested ? '取消退款' : '标记退款'}
@@ -1044,6 +1045,65 @@
                 }
             } catch (error) {
                 showToast('操作失败: ' + error.message, 'error');
+            }
+        }
+
+        // 生成随机美国人名
+        function generateRandomName() {
+            const firstNames = [
+                'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph',
+                'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica',
+                'Thomas', 'Charles', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald',
+                'Nancy', 'Karen', 'Lisa', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly'
+            ];
+            const lastNames = [
+                'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+                'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas',
+                'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'White', 'Harris', 'Thompson'
+            ];
+
+            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+            return `${firstName} ${lastName}`;
+        }
+
+        // 复制单张卡片的格式化信息
+        async function copyCardInfo(cardId) {
+            try {
+                // 获取卡片详细信息
+                const response = await fetch(`/api/cards/${cardId}`);
+                const card = await response.json();
+
+                if (!response.ok) {
+                    showToast('获取卡片信息失败', 'error');
+                    return;
+                }
+
+                // 检查卡片是否已激活
+                if (!card.is_activated || !card.card_number) {
+                    showToast('卡片尚未激活，无法复制信息', 'error');
+                    return;
+                }
+
+                // 格式化卡片信息
+                const cardInfo = `卡号: ${card.card_number}
+有效期: ${card.card_exp_date || '未知'}
+安全码: ${card.card_cvc || '未知'}
+姓名: ${generateRandomName()}
+地址: ${card.billing_address || '131 Lupine Drive, Torrington, WY 82240'}
+地区: 美国
+邮编: 82240`;
+
+                // 复制到剪贴板
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(cardInfo);
+                    showToast('卡片信息已复制到剪贴板', 'success');
+                } else {
+                    fallbackCopyToClipboard(cardInfo);
+                    showToast('卡片信息已复制到剪贴板', 'success');
+                }
+            } catch (error) {
+                showToast('复制失败: ' + error.message, 'error');
             }
         }
 
