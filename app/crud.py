@@ -34,11 +34,6 @@ def get_card_by_id(db: Session, card_id: str) -> Optional[models.Card]:
     return card
 
 
-def get_card_by_pk(db: Session, pk: int) -> Optional[models.Card]:
-    """根据主键获取卡片"""
-    return db.query(models.Card).filter(models.Card.id == pk).first()
-
-
 def get_cards(
     db: Session,
     skip: int = 0,

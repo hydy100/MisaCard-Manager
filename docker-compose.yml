@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  misacard-manager:
+    build: .
+    container_name: misacard-manager
+    ports:
+      - "8000:8000"
+    environment:
+      # MisaCard API 配置（必须设置）
+      - MISACARD_API_BASE_URL=${MISACARD_API_BASE_URL}
+      - MISACARD_API_TOKEN=${MISACARD_API_TOKEN}
+      
+      # 数据库配置
+      - DATABASE_URL=sqlite:////app/data/cards.db
+      
+      # 服务器配置
+      - DEBUG=${DEBUG:-false}
+      
+      # 鉴权配置（必须设置）
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      
+      # Session 配置
+      - SESSION_MAX_AGE=${SESSION_MAX_AGE:-86400}
+    
+    volumes:
+      # 持久化数据库
+      - ./data:/app/data
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  default:
+    name: misacard-network
+

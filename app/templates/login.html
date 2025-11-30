@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - MisaCard 管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        /* 美化滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        ::-webkit-scrollbar-corner {
+            background: #f1f5f9;
+        }
+        
+        /* Firefox 滚动条 */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md lg:max-w-lg xl:max-w-xl px-4 lg:px-6">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 lg:p-8 xl:p-10 fade-in">
+            <!-- Logo 和标题 -->
+            <div class="text-center mb-6 lg:mb-8">
+                <div class="inline-block bg-blue-600 text-white p-3 lg:p-4 xl:p-5 rounded-full mb-3 lg:mb-4">
+                    <svg class="w-10 h-10 lg:w-12 lg:h-12 xl:w-14 xl:h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h1 class="text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-800 mb-2">MisaCard 管理系统</h1>
+                <p class="text-sm lg:text-base text-gray-500">请输入管理员密码以继续</p>
+            </div>
+
+            <!-- 登录表单 -->
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-5 lg:mb-6">
+                    <label for="password" class="block text-sm lg:text-base font-medium text-gray-700 mb-2">
+                        管理员密码
+                    </label>
+                    <div class="relative">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            required
+                            autocomplete="current-password"
+                            class="w-full px-4 py-2.5 lg:px-5 lg:py-3 text-sm lg:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                            placeholder="请输入密码"
+                        />
+                        <button
+                            type="button"
+                            onclick="togglePassword()"
+                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            <svg id="eyeIcon" class="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 错误提示 -->
+                <div id="errorMessage" class="hidden mb-4 p-3 lg:p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 lg:w-6 lg:h-6 text-red-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-red-700 text-sm lg:text-base" id="errorText"></span>
+                    </div>
+                </div>
+
+                <!-- 登录按钮 -->
+                <button
+                    type="submit"
+                    id="loginButton"
+                    class="w-full bg-blue-600 text-white py-2.5 lg:py-3 xl:py-3.5 rounded-lg text-sm lg:text-base font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition transform active:scale-95"
+                >
+                    登录
+                </button>
+            </form>
+
+            <!-- 底部信息 -->
+            <div class="mt-5 lg:mt-6 text-center">
+                <p class="text-xs lg:text-sm text-gray-400">
+                    MisaCard Manager v2.0.0
+                </p>
+                <p class="text-xs lg:text-sm text-gray-400 mt-1">
+                    如忘记密码，请检查 .env 文件中的 ADMIN_PASSWORD 配置
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 切换密码显示/隐藏
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                `;
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                `;
+            }
+        }
+
+        // 处理登录
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const loginButton = document.getElementById('loginButton');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const loginForm = document.getElementById('loginForm');
+
+            // 隐藏错误提示
+            errorMessage.classList.add('hidden');
+
+            // 禁用按钮，显示加载状态
+            loginButton.disabled = true;
+            loginButton.innerHTML = `
+                <svg class="animate-spin h-5 w-5 lg:h-6 lg:w-6 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            `;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password: password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // 登录成功，跳转到管理后台
+                    window.location.href = '/admin';
+                } else {
+                    // 登录失败，显示错误信息
+                    errorText.textContent = data.message || '密码错误，请重试';
+                    errorMessage.classList.remove('hidden');
+                    loginForm.classList.add('shake');
+                    
+                    setTimeout(() => {
+                        loginForm.classList.remove('shake');
+                    }, 500);
+
+                    // 恢复按钮状态
+                    loginButton.disabled = false;
+                    loginButton.innerHTML = '登录';
+                    
+                    // 清空密码输入框
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').focus();
+                }
+            } catch (error) {
+                errorText.textContent = '网络错误，请重试';
+                errorMessage.classList.remove('hidden');
+                loginForm.classList.add('shake');
+                
+                setTimeout(() => {
+                    loginForm.classList.remove('shake');
+                }, 500);
+
+                // 恢复按钮状态
+                loginButton.disabled = false;
+                loginButton.innerHTML = '登录';
+            }
+        }
+
+        // 页面加载时聚焦密码输入框
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('password').focus();
+        });
+    </script>
+</body>
+</html>
+

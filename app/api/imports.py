@@ -1,9 +1,6 @@
-"""
-批量导入 API 端点
-"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .. import crud, schemas
 from ..database import get_db
@@ -14,24 +11,32 @@ router = APIRouter(prefix="/import", tags=["import"])
 
 class TextImportRequest(BaseModel):
     """文本导入请求模型"""
-    content: str
+    content: str = Field(..., description="卡片数据文本内容，支持多行，每行一条卡片信息。格式：卡密: mio-xxx 额度: x 有效期: x小时")
 
 
-@router.post("/text", response_model=schemas.CardImportResponse)
+@router.post("/text", response_model=schemas.CardImportResponse, summary="从文本批量导入卡片")
 async def import_from_text(
     request: TextImportRequest,
     db: Session = Depends(get_db)
 ):
     """
     从文本内容批量导入卡片（支持剪贴板粘贴）
-    支持格式：卡密: mio-xxx 额度: x 有效期: x小时
+    
+    支持格式：
+    - 完整格式：`卡密: mio-xxxxx 额度: 1 有效期: 1小时`
+    - 仅卡密：`mio-xxxxx`（使用默认额度 0 和有效期 1 小时）
+    
+    可以一次导入多行，每行一条卡片信息。
+    
+    - **content**: 文本内容，支持多行
+    
+    返回导入结果，包括成功数量、失败数量和失败详情。
     """
     text_content = request.content.strip()
 
     if not text_content:
         raise HTTPException(status_code=400, detail="文本内容不能为空")
 
-    # 解析文本
     parsed_cards, failed_lines = parse_txt_file(text_content)
 
     if not parsed_cards:
@@ -40,14 +45,12 @@ async def import_from_text(
             detail=f"没有成功解析任何卡片数据。失败的行: {failed_lines}"
         )
 
-    # 批量导入
     success_count = 0
     failed_count = 0
     failed_items = []
 
     for card_data in parsed_cards:
         try:
-            # 验证卡密格式
             if not validate_card_id(card_data["card_id"]):
                 failed_count += 1
                 failed_items.append({
@@ -56,7 +59,6 @@ async def import_from_text(
                 })
                 continue
 
-            # 检查是否已存在
             existing_card = crud.get_card_by_id(db, card_data["card_id"])
             if existing_card:
                 failed_count += 1
@@ -66,7 +68,6 @@ async def import_from_text(
                 })
                 continue
 
-            # 创建卡片
             card_create = schemas.CardCreate(**card_data)
             crud.create_card(db, card_create)
             success_count += 1
@@ -86,13 +87,30 @@ async def import_from_text(
     }
 
 
-@router.post("/json", response_model=schemas.CardImportResponse)
+@router.post("/json", response_model=schemas.CardImportResponse, summary="从 JSON 批量导入卡片")
 async def import_from_json(
     import_data: schemas.CardImportRequest,
     db: Session = Depends(get_db)
 ):
     """
     从 JSON 数据批量导入卡片
+    
+    JSON 格式示例：
+    ```json
+    {
+        "cards": [
+            {
+                "card_id": "mio-xxxxx-xxxxx-xxxxx-xxxxx",
+                "card_limit": 1.0,
+                "validity_hours": 1
+            }
+        ]
+    }
+    ```
+    
+    - **cards**: 卡片数组，每个卡片包含 card_id、card_limit、validity_hours
+    
+    返回导入结果，包括成功数量、失败数量和失败详情。
     """
     success_count = 0
     failed_count = 0
@@ -100,7 +118,6 @@ async def import_from_json(
 
     for card_item in import_data.cards:
         try:
-            # 验证卡密格式
             if not validate_card_id(card_item.card_id):
                 failed_count += 1
                 failed_items.append({
@@ -109,7 +126,6 @@ async def import_from_json(
                 })
                 continue
 
-            # 检查是否已存在
             existing_card = crud.get_card_by_id(db, card_item.card_id)
             if existing_card:
                 failed_count += 1
@@ -119,7 +135,6 @@ async def import_from_json(
                 })
                 continue
 
-            # 创建卡片
             card_create = schemas.CardCreate(
                 card_id=card_item.card_id,
                 card_limit=card_item.card_limit,

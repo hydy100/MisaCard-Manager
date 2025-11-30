@@ -107,15 +107,3 @@ def validate_card_id(card_id: str) -> bool:
     uuid_pattern = r'^mio-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     return bool(re.match(uuid_pattern, card_id.lower()))
 
-
-def format_card_info(card_data: Dict) -> str:
-    """
-    格式化卡片信息为可读文本
-
-    Args:
-        card_data: 卡片数据字典
-
-    Returns:
-        格式化后的文本
-    """
-    return f"卡密: {card_data['card_id']} 额度: {card_data['card_limit']} 有效期: {card_data['validity_hours']}小时"
