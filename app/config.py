@@ -13,6 +13,11 @@ MISACARD_API_TOKEN = os.getenv("MISACARD_API_TOKEN")
 if not MISACARD_API_TOKEN:
     raise ValueError("MISACARD_API_TOKEN 环境变量未设置！请在 .env 文件中配置")
 
+# 验证 token 是否可能被截断（检查常见特殊字符）
+if len(MISACARD_API_TOKEN) < 20:  # 假设token至少20个字符
+    import warnings
+    warnings.warn(f"⚠️  MISACARD_API_TOKEN 长度异常（{len(MISACARD_API_TOKEN)}字符），可能包含特殊字符导致被截断。请确保在 .env 文件中用引号包裹token值。")
+
 MISACARD_API_HEADERS = {
     "Authorization": f"Bearer {MISACARD_API_TOKEN}",
     "Origin": "https://misacard.com",

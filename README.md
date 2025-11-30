@@ -156,7 +156,7 @@ nano .env  # 或使用其他编辑器
 **必须配置的环境变量：**
 ```bash
 # MisaCard API Token（必需）
-MISACARD_API_TOKEN=your_actual_token_here
+MISACARD_API_TOKEN='your_actual_token_here'
 
 # 管理员密码（必需）
 ADMIN_PASSWORD=your_strong_password
