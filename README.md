@@ -248,6 +248,30 @@ docker compose restart        # 重启
 
 **运行测试：** `pytest`
 
+### 自定义 Favicon
+
+要添加自定义网站图标（favicon），请按以下步骤操作：
+
+1. **放置 favicon 文件**
+   - 将 `favicon.ico` 文件放在 `app/static/` 目录下
+   - 文件路径：`app/static/favicon.ico`
+
+2. **在模板中引用**
+   - 在所有 HTML 模板的 `<head>` 部分添加以下代码：
+   ```html
+   <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+   ```
+   - 需要修改的模板文件：
+     - `app/templates/query.html`
+     - `app/templates/index.html`
+     - `app/templates/login.html`
+
+3. **Docker 部署**
+   - Dockerfile 中的 `COPY app/ ./app/` 会自动包含 `app/static/` 目录
+   - 无需额外配置，favicon 在 Docker 部署中会自动生效
+
+**注意：** 静态文件通过 `/static/` 路径访问，FastAPI 会自动处理静态文件服务。
+
 ## ⚙️ 环境变量
 
 | 变量名 | 必需 | 说明 |
