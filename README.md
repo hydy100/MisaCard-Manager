@@ -71,9 +71,22 @@ nano .env  # 或使用其他编辑器
 ```
 
 **重要：必须配置以下环境变量：**
-- `MISACARD_API_TOKEN` - 你的 MisaCard API Token
+- `MISACARD_API_TOKEN` - 你的 MisaCard API Token（单 API 模式）
+- `MISACARD_API_CONFIGS` - 多 API 配置（可选，配置后将支持多站点切换）
 - `ADMIN_PASSWORD` - 管理员登录密码（建议使用强密码）
 - `SECRET_KEY` - Session 加密密钥（使用 `python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成）
+
+**多 API 配置示例：**
+```bash
+# 单 API 模式（默认）
+MISACARD_API_TOKEN=your_token_here
+MISACARD_API_BASE_URL=https://api.misacard.com  # 可选，默认为 https://api.misacard.com
+
+# 多 API 模式（配置后公共查询页面会显示 API 选择下拉框）
+MISACARD_API_CONFIGS='[{"name":"主站","base_url":"https://api.misacard.com","token":"your_token_1"},{"name":"备用站","base_url":"https://api2.misacard.com","token":"your_token_2"}]'
+```
+
+**注意：** 配置 `MISACARD_API_CONFIGS` 后，`MISACARD_API_TOKEN` 将被忽略。管理后台会使用第一个配置的 API。
 
 3. **设置文件权限**
 ```bash
@@ -141,7 +154,7 @@ cp .env.example .env
 nano .env  # 或使用其他编辑器
 ```
 
-**必须配置：** `MISACARD_API_TOKEN`、`ADMIN_PASSWORD`、`SECRET_KEY`
+**必须配置：** `MISACARD_API_TOKEN`（或 `MISACARD_API_CONFIGS`）、`ADMIN_PASSWORD`、`SECRET_KEY`
 
 **5. 初始化数据库**
 ```bash
@@ -276,11 +289,38 @@ docker compose restart        # 重启
 
 | 变量名 | 必需 | 说明 |
 |--------|------|------|
-| `MISACARD_API_TOKEN` | ✅ | MisaCard API 令牌 |
+| `MISACARD_API_TOKEN` | ✅* | MisaCard API 令牌（单 API 模式） |
+| `MISACARD_API_CONFIGS` | ✅* | 多 API 配置（JSON 数组格式，配置后支持多站点切换） |
+| `MISACARD_API_BASE_URL` | ❌ | API 基础 URL（默认 `https://api.misacard.com`） |
 | `ADMIN_PASSWORD` | ✅ | 管理员密码 |
 | `SECRET_KEY` | ✅ | Session 加密密钥 |
 | `DEBUG` | ❌ | 调试模式（默认 `true`） |
 | `SESSION_MAX_AGE` | ❌ | Session 过期时间（默认 86400 秒） |
+
+**\*** `MISACARD_API_TOKEN` 和 `MISACARD_API_CONFIGS` 二选一配置：
+- 配置 `MISACARD_API_TOKEN`：使用单 API 模式
+- 配置 `MISACARD_API_CONFIGS`：使用多 API 模式（公共查询页面会显示 API 选择下拉框）
+
+### 多 API 配置格式
+
+```bash
+MISACARD_API_CONFIGS='[
+  {
+    "name": "主站",
+    "base_url": "https://api.misacard.com",
+    "token": "your_token_here_1"
+  },
+  {
+    "name": "备用站",
+    "base_url": "https://api2.example.com",
+    "token": "your_token_here_2"
+  }
+]'
+```
+
+- `name`: 显示在下拉框中的名称
+- `base_url`: API 基础 URL（不包含 `/api/card` 路径）
+- `token`: 该 API 的访问令牌
 
 ## 🔄 数据库管理
 

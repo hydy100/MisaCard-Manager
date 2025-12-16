@@ -6,7 +6,6 @@ from ..config import MISACARD_API_BASE_URL, MISACARD_API_HEADERS
 
 API_BASE_URL = MISACARD_API_BASE_URL
 API_HEADERS = MISACARD_API_HEADERS
-CARD_INFO_API_BASE_URL = "https://api.misacard.com/api/m/get_card_info"
 
 
 async def query_card_from_api(card_id: str) -> Tuple[bool, Optional[Dict], Optional[str]]:
@@ -14,7 +13,7 @@ async def query_card_from_api(card_id: str) -> Tuple[bool, Optional[Dict], Optio
         timeout = httpx.Timeout(30.0, connect=10.0)
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=False) as client:
             response = await client.get(
-                f"{API_BASE_URL}/{card_id}",
+                f"{API_BASE_URL}/api/card/{card_id}",
                 headers=API_HEADERS
             )
 
@@ -40,7 +39,7 @@ async def activate_card_via_api(card_id: str) -> Tuple[bool, Optional[Dict], Opt
         timeout = httpx.Timeout(30.0, connect=10.0)
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=False) as client:
             response = await client.post(
-                f"{API_BASE_URL}/activate/{card_id}",
+                f"{API_BASE_URL}/api/card/activate/{card_id}",
                 headers=API_HEADERS
             )
 
@@ -108,7 +107,7 @@ async def get_card_transactions(card_number: str) -> Tuple[bool, Optional[Dict],
         timeout = httpx.Timeout(30.0, connect=10.0)
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=False) as client:
             response = await client.get(
-                f"{CARD_INFO_API_BASE_URL}/{card_number}",
+                f"{API_BASE_URL}/api/m/get_card_info/{card_number}",
                 headers=API_HEADERS
             )
 

@@ -12,7 +12,7 @@ import os
 from .database import engine
 from . import models
 from .api import cards, imports
-from .config import ADMIN_PASSWORD, SECRET_KEY, SESSION_MAX_AGE, MISACARD_API_TOKEN, DEBUG
+from .config import ADMIN_PASSWORD, SECRET_KEY, SESSION_MAX_AGE, MISACARD_API_TOKEN, MISACARD_API_CONFIGS, DEBUG
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -108,9 +108,20 @@ class LoginRequest(BaseModel):
 
 @app.get("/")
 async def root(request: Request):
+    # 传递 API 配置列表，但不暴露完整 token（仅用于前端识别）
+    api_configs_for_frontend = [
+        {
+            "name": config["name"],
+            "base_url": config["base_url"],
+            "token": config["token"]  # 前端需要完整 token 用于 API 调用
+        }
+        for config in MISACARD_API_CONFIGS
+    ]
+    
     return templates.TemplateResponse("query.html", {
         "request": request,
-        "api_token": MISACARD_API_TOKEN
+        "api_token": MISACARD_API_TOKEN,  # 保持向后兼容
+        "api_configs": api_configs_for_frontend
     })
 
 
