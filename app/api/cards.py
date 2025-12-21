@@ -326,6 +326,130 @@ async def get_unreturned_card_numbers(
     }
 
 
+from pydantic import BaseModel
+
+class SyncActivationRequest(BaseModel):
+    """同步激活请求模型"""
+    card_data: dict
+    timestamp: int  # 时间戳（毫秒）
+    signature: str  # HMAC 签名
+
+
+@router.post("/{card_id}/sync-activation", response_model=schemas.APIResponse, summary="同步激活信息（公共）")
+async def sync_card_activation(
+    card_id: str = Path(..., description="卡密"),
+    request_data: SyncActivationRequest = ...,
+    db: Session = Depends(get_db)
+):
+    """
+    同步卡片激活信息到本地数据库（公共接口）
+    
+    当用户在公共查询页面查询或激活卡片后，如果卡片已激活，
+    此接口会检查本地数据库并同步激活信息。
+    
+    - **card_id**: 卡密
+    - **request_data**: 包含卡片数据、时间戳和签名
+    """
+    import hmac
+    import hashlib
+    import time
+    import json
+    from ..config import SYNC_API_SECRET
+    
+    # 验证时间戳（防止重放攻击，允许 5 分钟的时间差）
+    current_time = int(time.time() * 1000)
+    time_diff = abs(current_time - request_data.timestamp)
+    if time_diff > 5 * 60 * 1000:  # 5 分钟
+        return {
+            "success": False,
+            "message": "请求已过期",
+            "data": {"synced": False, "reason": "expired"}
+        }
+    
+    # 验证签名
+    # 签名格式: HMAC-SHA256(card_id + timestamp + card_number)
+    # 使用卡号作为签名数据，简单且不易伪造
+    card_data = request_data.card_data
+    card_number = str(card_data.get("card_number", ""))
+    sign_data = f"{card_id}{request_data.timestamp}{card_number}"
+    expected_signature = hmac.new(
+        SYNC_API_SECRET.encode(),
+        sign_data.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    if not hmac.compare_digest(request_data.signature, expected_signature):
+        return {
+            "success": False,
+            "message": "签名验证失败",
+            "data": {"synced": False, "reason": "invalid_signature"}
+        }
+    # 检查本地数据库是否有这张卡
+    db_card = crud.get_card_by_id(db, card_id)
+    if not db_card:
+        # 数据库中没有这张卡，不需要同步
+        return {
+            "success": True,
+            "message": "卡片不在本地数据库中，无需同步",
+            "data": {"synced": False, "reason": "not_in_database"}
+        }
+    
+    # 检查卡片是否已激活
+    if db_card.is_activated:
+        # 已激活，不需要再同步
+        return {
+            "success": True,
+            "message": "卡片已在数据库中激活，无需同步",
+            "data": {"synced": False, "reason": "already_activated"}
+        }
+    
+    # 检查传入的数据是否包含激活信息
+    card_number = card_data.get("card_number")
+    if not card_number:
+        return {
+            "success": True,
+            "message": "卡片未激活，无法同步",
+            "data": {"synced": False, "reason": "card_not_activated"}
+        }
+    
+    # 同步激活信息到数据库
+    from datetime import datetime, timezone, timedelta
+    
+    exp_date = None
+    delete_date_str = card_data.get("delete_date")
+    if delete_date_str:
+        try:
+            dt = datetime.fromisoformat(delete_date_str.replace('Z', '+00:00'))
+            if dt.tzinfo is None:
+                utc8 = timezone(timedelta(hours=8))
+                dt = dt.replace(tzinfo=utc8)
+                exp_date = dt.astimezone(timezone.utc)
+            else:
+                exp_date = dt.astimezone(timezone.utc)
+        except:
+            pass
+    
+    crud.activate_card_in_db(
+        db,
+        card_id,
+        str(card_number),
+        str(card_data.get("card_cvc", "")),
+        card_data.get("card_exp_date", ""),
+        card_data.get("billing_address"),
+        validity_hours=card_data.get("exp_date"),  # API 的 exp_date 是有效期小时数
+        exp_date=exp_date
+    )
+    
+    # 记录激活日志
+    crud.create_activation_log(db, card_id, "success", error_message="通过公共查询页面同步激活")
+    
+    return {
+        "success": True,
+        "message": "激活信息已同步到数据库",
+        "data": {"synced": True}
+    }
+
+
 @router.get("/{card_id}/transactions", response_model=schemas.APIResponse, summary="获取卡片消费记录")
 async def get_card_transaction_history(
     card_id: str = Path(..., description="卡密"),

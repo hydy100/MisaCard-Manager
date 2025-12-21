@@ -201,6 +201,7 @@
         // API 配置（从服务器端注入）
         const API_CONFIGS = {{ api_configs | tojson }};
         const API_TOKEN = {{ api_token | tojson }};  // 向后兼容
+        const SYNC_API_SECRET = {{ sync_api_secret | tojson }};  // 同步API签名密钥
         
         let currentApiConfig = null;  // 当前选择的 API 配置
         let currentCardId = null;
@@ -401,6 +402,58 @@
             }
         }
 
+        // HMAC-SHA256 签名函数
+        async function hmacSha256(key, message) {
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(key);
+            const messageData = encoder.encode(message);
+            
+            const cryptoKey = await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign']
+            );
+            
+            const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+            return Array.from(new Uint8Array(signature))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+        }
+
+        // 同步激活信息到本地数据库
+        async function syncActivationToDatabase(cardId, cardData) {
+            try {
+                // 生成时间戳
+                const timestamp = Date.now();
+                
+                // 生成签名: HMAC-SHA256(card_id + timestamp + card_number)
+                const cardNumber = String(cardData.card_number || '');
+                const signData = cardId + timestamp + cardNumber;
+                const signature = await hmacSha256(SYNC_API_SECRET, signData);
+                
+                const response = await fetch(`/api/cards/${encodeURIComponent(cardId)}/sync-activation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        card_data: cardData,
+                        timestamp: timestamp,
+                        signature: signature
+                    })
+                });
+                const result = await response.json();
+                if (result.success && result.data && result.data.synced) {
+                    console.log('激活信息已同步到数据库');
+                }
+            } catch (error) {
+                // 同步失败不影响用户体验，只记录日志
+                console.log('同步激活信息失败:', error.message);
+            }
+        }
+
         // 显示查询结果（用于查询并激活功能）
         async function displayQueryResult(cardData) {
             // 转换 API 数据格式
@@ -422,6 +475,11 @@
             // 如果有卡号，保存卡号
             if (formattedData.card_number) {
                 currentCardNumber = formattedData.card_number;
+            }
+            
+            // 如果卡片已激活，同步到本地数据库
+            if (cardData.card_number) {
+                await syncActivationToDatabase(currentCardId, cardData);
             }
             
             // 显示基本信息
@@ -474,6 +532,11 @@
                 // 如果有卡号，保存卡号但不自动查询交易信息
                 if (formattedData.card_number) {
                     currentCardNumber = formattedData.card_number;
+                }
+                
+                // 如果卡片已激活，同步到本地数据库
+                if (cardData.card_number) {
+                    await syncActivationToDatabase(cardId, cardData);
                 }
                 
                 // 显示基本信息

@@ -89,3 +89,10 @@ if not SECRET_KEY:
         raise ValueError("生产环境必须设置 SECRET_KEY 环境变量！")
 
 SESSION_MAX_AGE = int(os.getenv("SESSION_MAX_AGE", 86400))
+
+# 同步API签名密钥（用于防止伪造请求）
+# 如果未设置，使用 SECRET_KEY 的哈希作为默认值
+SYNC_API_SECRET = os.getenv("SYNC_API_SECRET")
+if not SYNC_API_SECRET:
+    import hashlib
+    SYNC_API_SECRET = hashlib.sha256(f"sync_{SECRET_KEY}".encode()).hexdigest()[:32]

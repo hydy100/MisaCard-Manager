@@ -12,7 +12,7 @@ import os
 from .database import engine
 from . import models
 from .api import cards, imports
-from .config import ADMIN_PASSWORD, SECRET_KEY, SESSION_MAX_AGE, MISACARD_API_TOKEN, MISACARD_API_CONFIGS, DEBUG
+from .config import ADMIN_PASSWORD, SECRET_KEY, SESSION_MAX_AGE, MISACARD_API_TOKEN, MISACARD_API_CONFIGS, DEBUG, SYNC_API_SECRET
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -43,6 +43,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # 公开路径（不需要登录）
         public_paths = ["/", "/login", "/api/auth/login", "/health", "/static"]
         is_public = any(path.startswith(p) for p in public_paths)
+        
+        # 公共同步激活接口（/api/cards/{card_id}/sync-activation）
+        if path.endswith("/sync-activation") and "/api/cards/" in path:
+            is_public = True
         
         # /docs 和 /redoc 需要登录才能访问
         if not is_public:
@@ -121,7 +125,8 @@ async def root(request: Request):
     return templates.TemplateResponse("query.html", {
         "request": request,
         "api_token": MISACARD_API_TOKEN,  # 保持向后兼容
-        "api_configs": api_configs_for_frontend
+        "api_configs": api_configs_for_frontend,
+        "sync_api_secret": SYNC_API_SECRET  # 同步API签名密钥
     })
 
 

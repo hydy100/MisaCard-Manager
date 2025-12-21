@@ -13,10 +13,12 @@
 - 卡密查询、查询并激活、卡号查询
 - 实时余额和消费记录
 - 一键复制卡片信息
+- 激活信息自动同步到本地数据库（带签名验证防止伪造）
 
 ### 🔐 安全特性
 - 分级访问、登录鉴权、Session 加密
 - 文件访问保护、非 root 运行
+- 公共 API 签名验证（HMAC-SHA256 + 时间戳防重放）
 
 ### 📋 核心功能
 - 卡片管理、激活、批量导入
@@ -296,6 +298,7 @@ docker compose restart        # 重启
 | `SECRET_KEY` | ✅ | Session 加密密钥 |
 | `DEBUG` | ❌ | 调试模式（默认 `true`） |
 | `SESSION_MAX_AGE` | ❌ | Session 过期时间（默认 86400 秒） |
+| `SYNC_API_SECRET` | ❌ | 同步 API 签名密钥（默认从 SECRET_KEY 派生） |
 
 **\*** `MISACARD_API_TOKEN` 和 `MISACARD_API_CONFIGS` 二选一配置：
 - 配置 `MISACARD_API_TOKEN`：使用单 API 模式
@@ -321,6 +324,22 @@ MISACARD_API_CONFIGS='[
 - `name`: 显示在下拉框中的名称
 - `base_url`: API 基础 URL（不包含 `/api/card` 路径）
 - `token`: 该 API 的访问令牌
+
+### 同步 API 签名密钥
+
+`SYNC_API_SECRET` 用于保护公共查询页面的激活同步接口，防止恶意伪造请求。
+
+**工作原理：**
+- 用户在公共页面查询/激活卡片后，系统会自动将激活信息同步到本地数据库
+- 同步请求包含 HMAC-SHA256 签名和时间戳
+- 后端验证签名和时间戳（防止重放攻击，5分钟内有效）
+
+**生成方法：**
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(24))"
+```
+
+**注意：** 如果不设置，系统会自动从 `SECRET_KEY` 派生一个密钥，适合大多数场景。
 
 ## 🔄 数据库管理
 
