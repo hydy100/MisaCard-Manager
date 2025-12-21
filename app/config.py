@@ -1,9 +1,83 @@
 import os
 import secrets
 import json
+from datetime import timezone, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ============================================
+# 时区配置
+# ============================================
+# 支持格式: "Asia/Shanghai", "UTC", "+8", "-5" 等
+TZ_CONFIG = os.getenv("TZ", "UTC")
+
+def parse_timezone(tz_str: str) -> timezone:
+    """解析时区字符串，返回 timezone 对象"""
+    tz_str = tz_str.strip()
+    
+    # 处理 UTC
+    if tz_str.upper() == "UTC":
+        return timezone.utc
+    
+    # 处理数字偏移格式: +8, -5, +08:00, -05:30
+    if tz_str.startswith(('+', '-')) or tz_str.lstrip('-').replace(':', '').isdigit():
+        try:
+            # 移除可能的冒号
+            clean = tz_str.replace(':', '')
+            if len(clean) <= 3:  # +8, -5, +08
+                hours = int(clean)
+                minutes = 0
+            else:  # +0800, -0530
+                sign = -1 if clean.startswith('-') else 1
+                clean = clean.lstrip('+-')
+                hours = sign * int(clean[:2])
+                minutes = int(clean[2:4]) if len(clean) >= 4 else 0
+            return timezone(timedelta(hours=hours, minutes=minutes))
+        except ValueError:
+            pass
+    
+    # 处理常见时区名称
+    tz_mapping = {
+        "Asia/Shanghai": timezone(timedelta(hours=8)),
+        "Asia/Tokyo": timezone(timedelta(hours=9)),
+        "Asia/Hong_Kong": timezone(timedelta(hours=8)),
+        "Asia/Singapore": timezone(timedelta(hours=8)),
+        "America/New_York": timezone(timedelta(hours=-5)),
+        "America/Los_Angeles": timezone(timedelta(hours=-8)),
+        "Europe/London": timezone.utc,
+        "Europe/Paris": timezone(timedelta(hours=1)),
+        "Europe/Berlin": timezone(timedelta(hours=1)),
+    }
+    
+    if tz_str in tz_mapping:
+        return tz_mapping[tz_str]
+    
+    # 默认返回 UTC
+    print(f"⚠️  无法识别的时区 '{tz_str}'，使用 UTC")
+    return timezone.utc
+
+# 解析时区
+APP_TIMEZONE = parse_timezone(TZ_CONFIG)
+print(f"✅ 时区设置: {TZ_CONFIG} (UTC{'+' if APP_TIMEZONE.utcoffset(None).total_seconds() >= 0 else ''}{int(APP_TIMEZONE.utcoffset(None).total_seconds() // 3600)}:{abs(int(APP_TIMEZONE.utcoffset(None).total_seconds() % 3600 // 60)):02d})")
+
+
+def get_current_time():
+    """获取当前时间（使用配置的时区）"""
+    from datetime import datetime
+    return datetime.now(APP_TIMEZONE)
+
+
+def format_datetime(dt, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
+    """格式化时间（转换到配置的时区）"""
+    if dt is None:
+        return "-"
+    # 如果是 naive datetime，假定为 UTC
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    # 转换到配置的时区
+    local_dt = dt.astimezone(APP_TIMEZONE)
+    return local_dt.strftime(format_str)
 
 # 多 API 配置支持
 # 格式: MISACARD_API_CONFIGS='[{"name":"主站","base_url":"https://api.misacard.com","token":"xxx"},{"name":"备用","base_url":"https://api2.misacard.com","token":"yyy"}]'

@@ -12,7 +12,7 @@ import os
 from .database import engine
 from . import models
 from .api import cards, imports
-from .config import ADMIN_PASSWORD, SECRET_KEY, SESSION_MAX_AGE, MISACARD_API_TOKEN, MISACARD_API_CONFIGS, DEBUG, SYNC_API_SECRET
+from .config import ADMIN_PASSWORD, SECRET_KEY, SESSION_MAX_AGE, MISACARD_API_TOKEN, MISACARD_API_CONFIGS, DEBUG, SYNC_API_SECRET, APP_TIMEZONE
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -122,11 +122,15 @@ async def root(request: Request):
         for config in MISACARD_API_CONFIGS
     ]
     
+    # 计算时区偏移（分钟）
+    timezone_offset = int(APP_TIMEZONE.utcoffset(None).total_seconds() // 60)
+    
     return templates.TemplateResponse("query.html", {
         "request": request,
         "api_token": MISACARD_API_TOKEN,  # 保持向后兼容
         "api_configs": api_configs_for_frontend,
-        "sync_api_secret": SYNC_API_SECRET  # 同步API签名密钥
+        "sync_api_secret": SYNC_API_SECRET,  # 同步API签名密钥
+        "timezone_offset": timezone_offset  # 时区偏移（分钟）
     })
 
 

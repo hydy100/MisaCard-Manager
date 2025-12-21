@@ -130,11 +130,16 @@ async def activate_card(
     card_info = extract_card_info(card_data)
 
     if card_info.get("card_number"):
-        from datetime import datetime
+        from datetime import datetime, timezone, timedelta
+        from ..config import APP_TIMEZONE
         exp_date = None
         if card_info.get("exp_date"):
             try:
-                exp_date = datetime.fromisoformat(card_info["exp_date"].replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(card_info["exp_date"].replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    utc8 = timezone(timedelta(hours=8))
+                    dt = dt.replace(tzinfo=utc8)
+                exp_date = dt.astimezone(APP_TIMEZONE).replace(tzinfo=None)
             except:
                 pass
 
@@ -187,6 +192,7 @@ async def query_card(
     card_info = extract_card_info(card_data)
 
     from datetime import datetime, timezone, timedelta
+    from ..config import APP_TIMEZONE
     exp_date = None
     if card_info.get("exp_date"):
         try:
@@ -194,9 +200,7 @@ async def query_card(
             if dt.tzinfo is None:
                 utc8 = timezone(timedelta(hours=8))
                 dt = dt.replace(tzinfo=utc8)
-                exp_date = dt.astimezone(timezone.utc)
-            else:
-                exp_date = dt.astimezone(timezone.utc)
+            exp_date = dt.astimezone(APP_TIMEZONE).replace(tzinfo=None)
         except:
             pass
 
@@ -274,8 +278,8 @@ async def toggle_refund_status(
     db_card.refund_requested = not db_card.refund_requested
 
     if db_card.refund_requested:
-        from datetime import timezone
-        db_card.refund_requested_time = datetime.now(timezone.utc)
+        from ..config import get_current_time
+        db_card.refund_requested_time = get_current_time()
         message = "已标记为申请退款"
     else:
         db_card.refund_requested_time = None
@@ -414,6 +418,7 @@ async def sync_card_activation(
     
     # 同步激活信息到数据库
     from datetime import datetime, timezone, timedelta
+    from ..config import APP_TIMEZONE
     
     exp_date = None
     delete_date_str = card_data.get("delete_date")
@@ -421,11 +426,11 @@ async def sync_card_activation(
         try:
             dt = datetime.fromisoformat(delete_date_str.replace('Z', '+00:00'))
             if dt.tzinfo is None:
+                # 没有时区信息，假定为东八区
                 utc8 = timezone(timedelta(hours=8))
                 dt = dt.replace(tzinfo=utc8)
-                exp_date = dt.astimezone(timezone.utc)
-            else:
-                exp_date = dt.astimezone(timezone.utc)
+            # 转换为配置的时区并移除时区信息（存储为 naive datetime）
+            exp_date = dt.astimezone(APP_TIMEZONE).replace(tzinfo=None)
         except:
             pass
     

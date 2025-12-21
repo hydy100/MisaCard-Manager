@@ -14,19 +14,15 @@ def get_card_by_id(db: Session, card_id: str) -> Optional[models.Card]:
 
     # 检查并更新单张卡片的过期状态
     if card and card.exp_date and card.status not in ['deleted', 'expired']:
-        from datetime import timezone, timedelta
-        now = datetime.now(timezone.utc)
-
-        # 如果 exp_date 是 naive datetime，应该是 UTC+8 时间，需要转换为 UTC
+        from .config import get_current_time
+        now = get_current_time()
         exp_date = card.exp_date
-        if exp_date.tzinfo is None:
-            # 先标记为 UTC+8 时区
-            utc8 = timezone(timedelta(hours=8))
-            exp_date = exp_date.replace(tzinfo=utc8)
-            # 然后转换为 UTC 时区
-            exp_date = exp_date.astimezone(timezone.utc)
+        
+        # 移除时区信息进行比较
+        now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+        exp_naive = exp_date.replace(tzinfo=None) if exp_date.tzinfo else exp_date
 
-        if now > exp_date:
+        if now_naive > exp_naive:
             card.status = 'expired'
             db.commit()
             db.refresh(card)
@@ -69,8 +65,8 @@ def update_expired_cards(db: Session) -> int:
     检查并更新所有过期的卡片
     返回更新的卡片数量
     """
-    from datetime import timezone, timedelta
-    now = datetime.now(timezone.utc)
+    from .config import get_current_time
+    now = get_current_time()
 
     # 查找所有未删除且有过期时间的卡片
     cards = db.query(models.Card).filter(
@@ -82,16 +78,12 @@ def update_expired_cards(db: Session) -> int:
     # 更新状态为已过期
     count = 0
     for card in cards:
-        # 如果 exp_date 是 naive datetime，应该是 UTC+8 时间，需要转换为 UTC
         exp_date = card.exp_date
-        if exp_date.tzinfo is None:
-            # 先标记为 UTC+8 时区
-            utc8 = timezone(timedelta(hours=8))
-            exp_date = exp_date.replace(tzinfo=utc8)
-            # 然后转换为 UTC 时区
-            exp_date = exp_date.astimezone(timezone.utc)
+        # 移除时区信息进行比较（假设都是同一时区）
+        now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+        exp_naive = exp_date.replace(tzinfo=None) if exp_date.tzinfo else exp_date
 
-        if now > exp_date:
+        if now_naive > exp_naive:
             card.status = 'expired'
             count += 1
 
@@ -160,14 +152,14 @@ def activate_card_in_db(
     if not db_card:
         return None
 
-    from datetime import timezone
+    from .config import get_current_time
     db_card.card_number = card_number
     db_card.card_cvc = card_cvc
     db_card.card_exp_date = card_exp_date
     db_card.billing_address = billing_address
     db_card.is_activated = True
     db_card.status = "active"
-    db_card.card_activation_time = datetime.now(timezone.utc)
+    db_card.card_activation_time = get_current_time()  # 使用配置的时区
 
     # 更新有效期小时数和过期时间（从API的delete_date获取）
     if validity_hours is not None:

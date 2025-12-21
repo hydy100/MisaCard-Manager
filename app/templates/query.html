@@ -202,6 +202,7 @@
         const API_CONFIGS = {{ api_configs | tojson }};
         const API_TOKEN = {{ api_token | tojson }};  // 向后兼容
         const SYNC_API_SECRET = {{ sync_api_secret | tojson }};  // 同步API签名密钥
+        const APP_TIMEZONE_OFFSET = {{ timezone_offset | tojson }};  // 时区偏移（分钟）
         
         let currentApiConfig = null;  // 当前选择的 API 配置
         let currentCardId = null;
@@ -942,17 +943,37 @@
             }, 3000);
         }
 
-        // 格式化日期
+        // 格式化日期（数据库已存储配置时区的时间，直接显示）
         function formatDate(dateStr) {
             if (!dateStr) return '-';
+            
+            // 解析日期字符串，去除可能的时区后缀
+            let cleanDateStr = dateStr;
+            // 如果包含时区信息，去除它（因为数据库已经存储的是配置时区的时间）
+            if (dateStr.includes('+') || dateStr.includes('Z')) {
+                // 有时区信息，需要转换
+                const date = new Date(dateStr);
+                const targetTime = date.getTime() + (APP_TIMEZONE_OFFSET * 60 * 1000);
+                const targetDate = new Date(targetTime);
+                
+                const year = targetDate.getUTCFullYear();
+                const month = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(targetDate.getUTCDate()).padStart(2, '0');
+                const hour = String(targetDate.getUTCHours()).padStart(2, '0');
+                const minute = String(targetDate.getUTCMinutes()).padStart(2, '0');
+                
+                return `${year}/${month}/${day} ${hour}:${minute}`;
+            }
+            
+            // 没有时区信息，直接解析并格式化
             const date = new Date(dateStr);
-            return date.toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            
+            return `${year}/${month}/${day} ${hour}:${minute}`;
         }
 
         // 回车查询

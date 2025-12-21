@@ -29,6 +29,9 @@ services:
       
       # 同步 API 签名密钥（可选，不设置则自动从 SECRET_KEY 派生）
       - SYNC_API_SECRET=${SYNC_API_SECRET:-}
+      
+      # 时区设置（默认 UTC）
+      - TZ=${TZ:-Asia/Shanghai}
     
     volumes:
       # 持久化数据库

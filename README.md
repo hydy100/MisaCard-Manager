@@ -299,6 +299,7 @@ docker compose restart        # 重启
 | `DEBUG` | ❌ | 调试模式（默认 `true`） |
 | `SESSION_MAX_AGE` | ❌ | Session 过期时间（默认 86400 秒） |
 | `SYNC_API_SECRET` | ❌ | 同步 API 签名密钥（默认从 SECRET_KEY 派生） |
+| `TZ` | ❌ | 时区设置（默认 `UTC`，中国用户建议设置为 `Asia/Shanghai`） |
 
 **\*** `MISACARD_API_TOKEN` 和 `MISACARD_API_CONFIGS` 二选一配置：
 - 配置 `MISACARD_API_TOKEN`：使用单 API 模式
@@ -340,6 +341,30 @@ python -c "import secrets; print(secrets.token_urlsafe(24))"
 ```
 
 **注意：** 如果不设置，系统会自动从 `SECRET_KEY` 派生一个密钥，适合大多数场景。
+
+### 时区配置
+
+`TZ` 用于设置系统显示的时区，影响前端时间显示。
+
+**支持的格式：**
+- 时区名称：`Asia/Shanghai`、`America/New_York`、`Europe/London` 等
+- 数字偏移：`+8`、`-5`、`+08:00`、`-05:30` 等
+- UTC：`UTC`
+
+**示例：**
+```bash
+# 中国时区
+TZ=Asia/Shanghai
+
+# 东京时区
+TZ=Asia/Tokyo
+
+# 美东时区
+TZ=America/New_York
+
+# 使用数字偏移
+TZ=+8
+```
 
 ## 🔄 数据库管理
 
